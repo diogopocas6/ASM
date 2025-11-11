@@ -1,18 +1,29 @@
-#include <Servo.h>
+#include <Arduino.h>
+#include <Wire.h>
+#include "Pins.h"
+#include "Types.h"
+#include "Config.h"
 
-Servo myServo;  // create servo object
+#include "Braço.h"
+#include "Controlo_Base.h"
+#include "Sensors.h"
+#include "Display.h"
+#include "Maq_Estados.h"
+
+
+// put function declarations here:
+int myFunction(int, int);
 
 void setup() {
-  myServo.attach(9);  // servo signal pin connected to D10
+  // put your setup code here, to run once:
+  int result = myFunction(2, 3);
 }
 
 void loop() {
-  myServo.write(0);    // move to 0 degrees
-  delay(1000);
-  myServo.write(45);   // move to 90 degrees
-  delay(1000);
-  myServo.write(90);  // move to 180 degrees
-  delay(1000);
-  myservo.write(60);
-  delay(500);
+  // put your main code here, to run repeatedly:
+}
+
+// put function definitions here:
+int myFunction(int x, int y) {
+  return x + y;
 }
