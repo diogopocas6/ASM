@@ -13,4 +13,6 @@ void loop() {
   delay(1000);
   myServo.write(90);  // move to 180 degrees
   delay(1000);
+  myservo.write(60);
+  delay(500);
 }
