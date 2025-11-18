@@ -1,11 +1,9 @@
 #pragma once
 #include <Arduino.h>
-struct SensorReadings{bool objectDetected; bool delivered;};
+#include "Pins.h"
+#include "Types.h"
 
-class Sensors{
-    public:
-    void begin(uint8_t A0,uint8_t A1);
-    SensorReadings read();
-    private:
-    uint8_t _obj, _drop;
-};
+void sensors_begin();
+void sensors_update(sensors_t &s);
+
+
