@@ -1,11 +1,16 @@
-void Sensors::begin(uint8_t pObj, uint8_t pDrop){
-    _obj = pObj; _drop = pDrop;
-    pinMode(_obj,INPUT);
-    pinMode(_drop,INPUT);
-} 
-SensorReadings Sensors::read(){
-    int o = analogRead(_obj);
-    int d = analogRead(_drop);
-    return{ o < 400, d < 400}; //Threshold de deteccao de objeto
+#include "Sensors.h"
+
+void sensors_begin() {
+  pinMode(PIN_OBJ_SENSOR, INPUT);
+  pinMode(PIN_DROP_SENSOR, INPUT);
 }
 
+void sensors_update(sensors_t &s) {
+  // Sensores infrared tipo X
+  int o = analogRead(PIN_OBJ_SENSOR);
+  int d = analogRead(PIN_DROP_SENSOR);
+
+  // Thresholds para "1 = detectado" --> ajustar pro sensor infrared usado
+  s.obj_detected  = (o < 400);
+  s.drop_detected = (d < 400);
+}
