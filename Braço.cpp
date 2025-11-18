@@ -1,4 +1,4 @@
-#include "Braço.h"
+#include "Braco.h"
 
 static void arm_write_all(arm_t &arm, int base, int sh, int el, int wr) {
   arm.baseAngle = base;
@@ -53,3 +53,4 @@ void arm_set_base(arm_t &arm, int deg) {
   arm.baseAngle = constrain(deg, 0, 180);
   arm.base.write(arm.baseAngle);
 }
+
