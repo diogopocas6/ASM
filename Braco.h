@@ -28,3 +28,20 @@ void arm_pose_open_claw(arm_t &arm);
 // Se precisares mexer só a base
 void arm_set_base(arm_t &arm, int deg);
 
+void fecharGarraSeObjeto() {
+  int sensorValor = digitalRead(sensor_garraPin); // acho que n precida disto aqui
+
+  // HIGH significa que o objeto está entre os dedos da garra
+  if (sensorValor == HIGH) {
+    // fecha suavemente
+    for (int pos = servo_pos_4, pos >= 20, pos--) {   // 20 = posição fechada (exemplo)
+      servo_pos_4 = pos;   
+      myservo_4.write(pos);
+      delay(10);  // velocidade da garra
+    }
+
+   
+  }
+void goToPose(const Pose& p, int pause_ms = 5) {  // funçao que faz o braço mudar de posiçao mudar de posiçao (alterar isto) 
+  ptp_move(p.s1, p.s2, p.s3, p.s4, pause_ms);  
+}
