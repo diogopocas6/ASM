@@ -18,12 +18,10 @@ constexpr bool OLED_ENABLED        = true;
 
 // ---- Controlo de temperatura ----
 
-// Temperatura "alvo" (ºC) –
-constexpr float TEMP_SETPOINT_C   = 20.0f;
+// Zona de controlo térmico (em ºC)
+constexpr float TEMP_FAN_START_C = 20.0f;  // abaixo disto, fan = 0
+constexpr float TEMP_FAN_FULL_C  = 35.0f;  // acima disto, fan = 100%
 
-// Histerese para ligar/desligar (método simples ON/OFF)
-constexpr float TEMP_HYST_C       = 2.0f;   // +/- 2 ºC
-
-// Período de atualização do controlo térmico (ms)
+// Período de atualização (ms)
 constexpr unsigned TEMP_UPDATE_MS = 200;
 
