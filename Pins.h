@@ -10,3 +10,7 @@
 #define PIN_SENSOR_PICKUP   A0  // sensor de objeto na zona de recolha
 #define PIN_SENSOR_DROPOFF  A1  // sensor de objeto na zona de entrega
 
+// Sensor de temperatura ambiente (analógico)
+#define PIN_TEMP_SENSOR   A2
+// Ventoinha controlada por PWM (ligada a um MOSFET/transístor)
+#define PIN_FAN_PWM       3   //precisa ser pino PWM
