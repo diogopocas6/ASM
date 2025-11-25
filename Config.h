@@ -27,5 +27,3 @@ constexpr float TEMP_HYST_C       = 2.0f;   // +/- 2 ºC
 // Período de atualização do controlo térmico (ms)
 constexpr unsigned TEMP_UPDATE_MS = 200;
 
-// Se quiserem depois experimentar um controlo proporcional:
-constexpr float TEMP_KP_DUTY_PER_C = 10.0f; // 10 pontos de PWM por ºC acima do setpoint
