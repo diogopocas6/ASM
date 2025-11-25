@@ -90,6 +90,30 @@ arm_t arm;
 float tempC = 0.0;
 uint8_t fanDuty = 0;
 
+float readTemperatureC() {
+  int raw = analogRead(PIN_TEMP_SENSOR);
+  float voltage = raw * (5.0 / 1023.0);
+  float temp = voltage * 100.0;  // LM35: 10 mV por ºC
+  return temp;
+}
+
+uint8_t computeFanDuty(float tC) {
+  if (tC <= TEMP_FAN_START_C)
+    return 0;
+
+  if (tC >= TEMP_FAN_FULL_C)
+    return 255;
+
+  // Mapeamento linear entre START → FULL
+  float frac = (tC - TEMP_FAN_START_C) / (TEMP_FAN_FULL_C - TEMP_FAN_START_C);
+  int duty = frac * 255.0;
+
+  if (duty < 0) duty = 0;
+  if (duty > 255) duty = 255;
+
+  return (uint8_t)duty;
+}
+
 // Auxiliar
 unsigned long lastTempUpdate = 0;
 
