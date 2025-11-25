@@ -7,5 +7,6 @@
 #define PIN_SERVO_WRIST    5
 
 //Sensors pins
-#define PIN_OBJ_SENSOR   A0  // sensor de objeto na zona de recolha
-#define PIN_DROP_SENSOR  A1  // sensor de objeto na zona de entrega
+#define PIN_SENSOR_PICKUP   A0  // sensor de objeto na zona de recolha
+#define PIN_SENSOR_DROPOFF  A1  // sensor de objeto na zona de entrega
+
