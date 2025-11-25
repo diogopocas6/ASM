@@ -86,6 +86,13 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // ====== BRAÇO ======
 arm_t arm;
 
+// Estado térmico atual
+float tempC = 0.0;
+uint8_t fanDuty = 0;
+
+// Auxiliar
+unsigned long lastTempUpdate = 0;
+
 // ====== MÁQUINA DE ESTADOS ======
 enum class State {
   IDLE,               // braço parado, à espera de peça
