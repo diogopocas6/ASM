@@ -1,17 +1,25 @@
 #include "Sensors.h"
 
 void sensors_begin() {
-  pinMode(PIN_SENSOR_PECA, INPUT);      // ou INPUT_PULLUP consoante o sensor
+  pinMode(PIN_SENSOR_PECA, INPUT);    
   pinMode(PIN_SENSOR_GARRA, INPUT);
 }
 
-bool sensor_pieceDetected() {
-  int v = digitalRead(PIN_SENSOR_PECA);
-  // Ajustar HIGH/LOW dependendo do sensor (aqui assumo HIGH = peça presente)
-  return (v == HIGH);
-}
+SensorReadings sensors_read() {
+  SensorReadings s;
 
-bool sensor_garraHasObject() {
-  int v = digitalRead(PIN_SENSOR_GARRA);
-  return (v == HIGH);  // HIGH = objeto dentro da garra
+  // Exemplo para sensores analógicos tipo TCRT5000
+  int vPickup  = analogRead(PIN_SENSOR_PICKUP);
+  int vDropoff = analogRead(PIN_SENSOR_DROPOFF);
+
+  const int THRESH = 400;  // < 400 ≈ objeto detetado --> testar com sensor e modificar
+
+  s.pieceAtPickup  = (vPickup  < THRESH);
+  s.pieceAtDropoff = (vDropoff < THRESH);
+
+  // Se forem digitais (saída 0/1), era só:
+  // s.pieceAtPickup  = (digitalRead(PIN_SENSOR_PICKUP)  == HIGH);
+  // s.pieceAtDropoff = (digitalRead(PIN_SENSOR_DROPOFF) == HIGH);
+
+  return s;
 }
