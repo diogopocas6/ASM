@@ -1,16 +1,17 @@
 #include "Sensors.h"
 
 void sensors_begin() {
-  pinMode(PIN_OBJ_SENSOR, INPUT);
-  pinMode(PIN_DROP_SENSOR, INPUT);
+  pinMode(PIN_SENSOR_PECA, INPUT);      // ou INPUT_PULLUP consoante o sensor
+  pinMode(PIN_SENSOR_GARRA, INPUT);
 }
 
-void sensors_update(sensors_t &s) {
-  // Sensores infrared tipo X
-  int o = analogRead(PIN_OBJ_SENSOR);
-  int d = analogRead(PIN_DROP_SENSOR);
+bool sensor_pieceDetected() {
+  int v = digitalRead(PIN_SENSOR_PECA);
+  // Ajustar HIGH/LOW dependendo do sensor (aqui assumo HIGH = peça presente)
+  return (v == HIGH);
+}
 
-  // Thresholds para "1 = detectado" --> ajustar pro sensor infrared usado
-  s.obj_detected  = (o < 400);
-  s.drop_detected = (d < 400);
+bool sensor_garraHasObject() {
+  int v = digitalRead(PIN_SENSOR_GARRA);
+  return (v == HIGH);  // HIGH = objeto dentro da garra
 }
