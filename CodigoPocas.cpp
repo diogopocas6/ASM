@@ -3,12 +3,31 @@
 #define PinShoulder 9
 #define PinElbow 6
 #define PinGarra 5 
-#define PinVentoinha 12
+#define PinVentoinha 12 //mudar depois
 #define PinSensorPickup A0
-#define PinSensorPlace A1
+#define PinSensorPlace 13 //mudar depois
 #define PinSensorTemperatura A2 //Secalhar alterar estes números
 #define activateValueSensorPlace 100   //MUDAR CONFORME TESTES!
 #define activateValueSensorPick 100    //MUDAR CONFORME TESTES!
+
+/*
+Posições segundo código enzo:
+Begin -> Base = 90 / Shoulder = 0 / Elbow = 160 / Garra = 140(fechada)
+*/
+// Ângulos
+#define BASE_CENTRO 90
+#define BASE_PICKUP 180
+#define BASE_DROPOFF 0
+
+#define ELBOW_UP 160
+#define ELBOW_DOWN 110
+
+#define SHOULDER_START 0
+#define SHOULDER_END 80
+
+#define GARRA_OPEN 30
+#define GARRA_CLOSE 140
+
 
 Servo ServoBase;
 Servo ServoShoulder;
@@ -35,6 +54,28 @@ void setup() {
   ServoShoulder.attach(PinShoulder);    //ServoShoulder.write(x) para mover para a posiçao x graus
   ServoElbow.attach(PinElbow);
   ServoGarra.attach(PinGarra);
+  
+  //Posições iniciais
+  ServoBase.write(90);
+  ServoShoulder.write(0);
+  ServoElbow.write(160);
+  ServoGarra.write(140);
+}
+
+//Funções para controlo dos servos
+//GARRA
+void openGarra(){
+  for (int pos = GARRA_CLOSE; pos >= GARRA_OPEN; pos--){
+    ServoGarra.write(pos);
+    delay(20);
+  }
+}
+
+void closeGarra(){
+  for (int pos = GARRA_OPEN; pos <= GARRA_CLOSE; pos++){
+    ServoGarra.write(pos);
+    delay(20);
+  }
 }
 
 void updateSensors(){
