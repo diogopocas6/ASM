@@ -135,7 +135,7 @@ void setup() {
   stateText = "STANDBY";
   updateDisplay(stateText, 0, 0);
   delay(500);
-  Serial.println("Sistema iniciado.");
+  //Serial.println("Sistema iniciado.");
 }
 
 // =======================
@@ -228,8 +228,6 @@ int readTempAvg() {
 void updateDisplay(const String &state, int tempRaw, int pwm) {
   display.clearDisplay();
   display.setTextSize(1);
-  display.setCursor(0,0);
-  display.println("ROBO: BrasArmSys");
   display.setCursor(0,12);
   display.print("Estado: ");
   display.println(state);
@@ -237,15 +235,18 @@ void updateDisplay(const String &state, int tempRaw, int pwm) {
   display.print("TempRaw: ");
   display.print(tempRaw);
   display.setCursor(0, 36);
-  display.print("PWM: ");
+  display.print("PWM ventoinha: ");
   display.print(pwm);
   // opcional: mostra cor lida (valores inteiros)
+  
   display.setCursor(0, 48);
   display.print("IR Drop: ");
   display.print( pecaNoDropoff() ? "PRES" : "LIVRE" );
   display.display();
+  
 }
 
+void display_objeto()
 // =======================
 // Ciclo completo do braço (bloqueante como no teu código original)
 // =======================
@@ -305,6 +306,9 @@ void executarCicloBraco() {
   // gira base pra dropoff
   for (int pos = BASE_PICKUP_ANGLE; pos >= BASE_DROPOFF_ANGLE; pos--) {
     base.write(pos);
+    while (pecaNoDropoff()){
+      delay(5);
+    }
     delay(10);
   }
   updateDisplay("CICLO: TO DROPOFF", readTempAvg(), analogRead(PIN_TEMP_AIN));
@@ -313,6 +317,9 @@ void executarCicloBraco() {
   // estende garra no dropoff
   for (int pos = 0; pos <= 90; pos++) {
     shoulder.write(pos);
+    while (pecaNoDropoff()){
+      delay(5);
+    }
     delay(10);
   }
   updateDisplay("CICLO: DROP DOWN", readTempAvg(), analogRead(PIN_TEMP_AIN));
