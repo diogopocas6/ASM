@@ -1,5 +1,6 @@
 // Integração: Braço com TCS34725 + OLED SSD1306 + Controlo ventoinha via L9110 (A0 -> PWM)
 // Mantém a rotina do braço praticamente igual ao original, e mostra estado + temp + pwm no OLED.
+// COLOCAR TEMPERATURA NO DIPLAY COM FORMULA ANALOGREAD(PINOTEMPERATURA) * 3.3 / 1023 * 100
 
 // Bibliotecas
 #include <Wire.h>
