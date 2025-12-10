@@ -251,6 +251,7 @@ void updateDisplay(const String &state, int tempRaw, int pwm) {
 // =======================
 void executarCicloBraco() {
   // Indicar inicio
+  bool waitingDrop = false; 
   updateDisplay("CICLO: GIRAR->PICKUP", readTempAvg(), 0);
   delay(200);
 
@@ -300,28 +301,48 @@ void executarCicloBraco() {
     delay(10);
   }
   updateDisplay("CICLO: RECOLHE", readTempAvg(), analogRead(PIN_TEMP_AIN));
-  delay(500);
+  delay(5);
 
   // gira base pra dropoff
   for (int pos = BASE_PICKUP_ANGLE; pos >= BASE_DROPOFF_ANGLE; pos--) {
     base.write(pos);
+    if (pecaNoDropoff() && !waitingDrop) {
+      updateDisplay("AGUARDAR DROP LIVRE", readTempAvg(), analogRead(PIN_TEMP_AIN));
+      waitingDrop = true;
+    } 
     while (pecaNoDropoff()){
+      //updateDisplay("AGUARDAR DROP LIVRE", readTempAvg(), analogRead(PIN_TEMP_AIN));
       delay(5);
+    }
+    if (waitingDrop) {
+    updateDisplay("DROP LIVRE", readTempAvg(), analogRead(PIN_TEMP_AIN));
+    waitingDrop = false;
     }
     delay(10);
   }
-  updateDisplay("CICLO: TO DROPOFF", readTempAvg(), analogRead(PIN_TEMP_AIN));
-  delay(500);
 
+
+  updateDisplay("A largar", readTempAvg(), analogRead(PIN_TEMP_AIN));
+  delay(5);
   // estende garra no dropoff
   for (int pos = 0; pos <= 90; pos++) {
     shoulder.write(pos);
+    if (pecaNoDropoff() && !waitingDrop) {
+    updateDisplay("Clear object!", readTempAvg(), analogRead(PIN_TEMP_AIN));
+    waitingDrop = true;
+    }
     while (pecaNoDropoff()){
+      //updateDisplay("AGUARDAR DROP LIVRE", readTempAvg(), analogRead(PIN_TEMP_AIN));
       delay(5);
     }
-    delay(10);
+    if (waitingDrop) {
+    updateDisplay("A largar", readTempAvg(), analogRead(PIN_TEMP_AIN));
+    waitingDrop = false;
   }
-  updateDisplay("CICLO: DROP DOWN", readTempAvg(), analogRead(PIN_TEMP_AIN));
+
+  delay(10);
+  }
+  updateDisplay("A descer", readTempAvg(), analogRead(PIN_TEMP_AIN));
   delay(500);
 
   // abre garra (largando peça)
@@ -329,11 +350,11 @@ void executarCicloBraco() {
     wrist.write(pos);
     delay(10);
   }
-  updateDisplay("CICLO: SOLTAR", readTempAvg(), analogRead(PIN_TEMP_AIN));
+  updateDisplay("A soltar", readTempAvg(), analogRead(PIN_TEMP_AIN));
   delay(2000);
 
   // CONFIRMAÇÃO IR
-  updateDisplay("CICLO: CONFIRMA DROP", readTempAvg(), analogRead(PIN_TEMP_AIN));
+  updateDisplay("CONFIRMA DROP", readTempAvg(), analogRead(PIN_TEMP_AIN));
   unsigned long inicioEspera = millis();
   const unsigned long tempoMaximo = 3000;
   bool detectado = false;
@@ -343,10 +364,10 @@ void executarCicloBraco() {
   }
 
   if (detectado) {
-    updateDisplay("CICLO: DELIVERED", readTempAvg(), analogRead(PIN_TEMP_AIN));
+    updateDisplay("Entregue!", readTempAvg(), analogRead(PIN_TEMP_AIN));
     delay(600);
   } else {
-    updateDisplay("CICLO: ERRO DROP", readTempAvg(), analogRead(PIN_TEMP_AIN));
+    updateDisplay("Erro!", readTempAvg(), analogRead(PIN_TEMP_AIN));
     delay(1000);
   }
 
@@ -355,7 +376,7 @@ void executarCicloBraco() {
     shoulder.write(pos);
     delay(10);
   }
-  updateDisplay("CICLO: RECOLHER", readTempAvg(), analogRead(PIN_TEMP_AIN));
+  updateDisplay("A Recolher", readTempAvg(), analogRead(PIN_TEMP_AIN));
   delay(500);
 
   // fecha garra
@@ -363,7 +384,7 @@ void executarCicloBraco() {
     wrist.write(pos);
     delay(10);
   }
-  updateDisplay("CICLO: FECHAR", readTempAvg(), analogRead(PIN_TEMP_AIN));
+  updateDisplay("A Fechar", readTempAvg(), analogRead(PIN_TEMP_AIN));
   delay(2000);
 
   // sobe garra
@@ -371,7 +392,7 @@ void executarCicloBraco() {
     elbow.write(pos);
     delay(10);
   }
-  updateDisplay("CICLO: SUBIR", readTempAvg(), analogRead(PIN_TEMP_AIN));
+  updateDisplay("A SUBIR", readTempAvg(), analogRead(PIN_TEMP_AIN));
   delay(500);
 
   // gira base centro
@@ -379,6 +400,6 @@ void executarCicloBraco() {
     base.write(pos);
     delay(10);
   }
-  updateDisplay("CICLO: STANDBY", readTempAvg(), analogRead(PIN_TEMP_AIN));
+  updateDisplay("STANDBY", readTempAvg(), analogRead(PIN_TEMP_AIN));
   delay(500);
 }
