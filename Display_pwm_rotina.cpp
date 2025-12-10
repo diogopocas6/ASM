@@ -135,7 +135,7 @@ void setup() {
   stateText = "STANDBY";
   updateDisplay(stateText, 0, 0);
   delay(500);
-  //Serial.println("Sistema iniciado.");
+  Serial.println("Sistema iniciado.");
 }
 
 // =======================
@@ -228,6 +228,8 @@ int readTempAvg() {
 void updateDisplay(const String &state, int tempRaw, int pwm) {
   display.clearDisplay();
   display.setTextSize(1);
+  display.setCursor(0,0);
+  display.println("ROBO: BrasArmSys");
   display.setCursor(0,12);
   display.print("Estado: ");
   display.println(state);
@@ -235,18 +237,15 @@ void updateDisplay(const String &state, int tempRaw, int pwm) {
   display.print("TempRaw: ");
   display.print(tempRaw);
   display.setCursor(0, 36);
-  display.print("PWM ventoinha: ");
+  display.print("PWM: ");
   display.print(pwm);
   // opcional: mostra cor lida (valores inteiros)
-  
   display.setCursor(0, 48);
   display.print("IR Drop: ");
   display.print( pecaNoDropoff() ? "PRES" : "LIVRE" );
   display.display();
-  
 }
 
-void display_objeto()
 // =======================
 // Ciclo completo do braço (bloqueante como no teu código original)
 // =======================
