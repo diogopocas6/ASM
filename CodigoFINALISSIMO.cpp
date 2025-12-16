@@ -1,7 +1,3 @@
-// Integração: Braço com TCS34725 + OLED SSD1306 + Controlo ventoinha via L9110 (A0 -> PWM)
-// Mantém a rotina do braço praticamente igual ao original, e mostra estado + temp + pwm no OLED.
-// COLOCAR TEMPERATURA NO DIPLAY COM FORMULA ANALOGREAD(PINOTEMPERATURA) * 3.3 / 1023 * 100
-
 // Bibliotecas
 #include <Wire.h>
 #include "Adafruit_TCS34725.h"
@@ -9,18 +5,13 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-// =======================
 // OLED 128x64 (I2C)
-// =======================
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 const uint8_t OLED_ADDRESS = 0x3C; // usualmente 0x3C
 
-// =======================
 // Configuração dos servos
-// =======================
-
 Servo base;
 Servo shoulder;
 Servo elbow;
@@ -36,10 +27,7 @@ int BASE_DROPOFF_RED   = 135;  // dropoff vermelho
 #define PIN_SERVO_ELBOW      6
 #define PIN_SERVO_WRIST      5
 
-// =======================
 // Sensores & IO
-// =======================
-
 #define PIN_IR_DROPOFF      12
 
 // Ventoinha (L9110)
@@ -49,9 +37,7 @@ int BASE_DROPOFF_RED   = 135;  // dropoff vermelho
 // Sensor temperatura
 #define PIN_TEMP_AIN A0
 
-// =======================
 // Sensor de cor TCS34725
-// =======================
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(
   TCS34725_INTEGRATIONTIME_50MS,
   TCS34725_GAIN_4X
@@ -60,19 +46,28 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(
 bool pecaBrancaPresente   = false;
 bool pecaVermelhaPresente = false;
 
-// =======================
 // Parâmetros de leitura / ventoinha
-// =======================
 const int ADC_MAX = 1023;
 const int NUM_SAMPLES_TEMP = 8;
 const int SAMPLE_DELAY_MS = 6;
 const int PWM_MAX = 255;
 const int MIN_PWM_TO_SPIN = 60; // evita trepidações; ajusta conforme necessário
+int pwmAtual = 0;
+
+// Controlo térmico proporcional
+float tempBaseC = 0.0;      
+bool tempBaseOk = false;
+
+const int PWM_MIN_CTRL = 80;
+const int PWM_MAX_CTRL = 255;
+
+const float TEMP_WINDOW = 5.0;          // ±5 °C
+const float PWM_PER_DEG = (PWM_MAX_CTRL - PWM_MIN_CTRL) / (2.0 * TEMP_WINDOW);    // = 17.5 PWM/°C
 
 // Estados legíveis para o display
-String stateText = "INIT";
+String stateText = "Standby";
 
-// Protótipos
+// Protótipos Funções
 bool ehBranco(float r, float g, float b);
 bool ehVermelho(float r, float g, float b);
 bool pecaNoDropoff();
@@ -81,9 +76,7 @@ void executarCicloBraco(int baseDropoffAngle, const String &nomeCor);
 int readTempAvg();
 void updateDisplay(const String &state, int tempRaw, int pwm);
 
-// =======================
 // Setup
-// =======================
 void setup() {
   Serial.begin(115200);
   while (!Serial) { }
@@ -135,30 +128,69 @@ void setup() {
   digitalWrite(INB_PIN, LOW);
 
   // Estado inicial no display
-  stateText = "STANDBY";
+  stateText = "Standby";
   updateDisplay(stateText, 0, 0);
   delay(500);
-  Serial.println("Sistema iniciado.");
+  
+// Medição da temperatura base 
+const int NUM_BASE_SAMPLES = 5;
+float somaTemp = 0;
+for (int i = 0; i < NUM_BASE_SAMPLES; i++) {
+  int raw = analogRead(PIN_TEMP_AIN);
+  float tempC = raw * 3.3 / 1023.0 * 100.0;
+  somaTemp += tempC;
+  delay(100);
 }
 
-// =======================
-// Loop principal
-// =======================
+tempBaseC = somaTemp / NUM_BASE_SAMPLES;
+tempBaseOk = true;
+
+Serial.print("Temperatura base (C): ");
+Serial.println(tempBaseC);
+
+Serial.println("Sistema iniciado.");
+}
+
+
+
 void loop() {
   // 1) Controlo da ventoinha (sempre)
   int tempRaw = readTempAvg();
-  int pwm = map(tempRaw, 0, ADC_MAX, 0, PWM_MAX);
-  if (pwm < MIN_PWM_TO_SPIN) pwm = MIN_PWM_TO_SPIN;
+  float tempC = tempRaw * 3.3 / 1023.0 * 100.0;
+
+  int pwm;
+
+  // limites da janela
+  float tempMin = tempBaseC - TEMP_WINDOW;
+  float tempMax = tempBaseC + TEMP_WINDOW;
+
+  if (tempC <= tempMin) {
+    pwm = PWM_MIN_CTRL;
+  }
+  else if (tempC >= tempMax) {
+    pwm = PWM_MAX_CTRL;
+  }
+  else {
+    // zona linear
+    float delta = tempC - tempMin;   // 0 → 10 °C
+    pwm = PWM_MIN_CTRL + delta * PWM_PER_DEG;
+  }
+
+  // segurança extra
+  if (pwm < PWM_MIN_CTRL) pwm = PWM_MIN_CTRL;
+  if (pwm > PWM_MAX_CTRL) pwm = PWM_MAX_CTRL;
+
+  pwmAtual = pwm;
   digitalWrite(INB_PIN, LOW);
-  analogWrite(INA_PIN, pwm);
+  analogWrite(INA_PIN, pwmAtual);
 
   // 2) Mostrar estado / temp / pwm no display
-  updateDisplay("STANDBY", tempRaw, pwm);
+  updateDisplay("Standby", tempRaw, pwmAtual);
 
   // 3) Lógica do braço: só começa quando dropoff livre (se já tiver peça, não inicia ciclo)
   if (!dropoffLivre()) {
-    stateText = "DROP OCUPADO";
-    updateDisplay(stateText, tempRaw, pwm);
+    stateText = "Drop Ocupado";
+    updateDisplay(stateText, tempRaw, pwmAtual);
     pecaBrancaPresente   = false;
     pecaVermelhaPresente = false;
     delay(300);
@@ -175,30 +207,13 @@ void loop() {
   bool brancaAgora   = ehBranco(red, green, blue);
   bool vermelhaAgora = ehVermelho(red, green, blue);
 
-  // Mensagens rápidas
-  if (brancaAgora && !pecaBrancaPresente) {
-    stateText = "PECA BRANCA DETECTADA";
-    updateDisplay(stateText, tempRaw, pwm);
-  } else if (!brancaAgora && pecaBrancaPresente) {
-    stateText = "PECA BRANCA REMOVIDA";
-    updateDisplay(stateText, tempRaw, pwm);
-  }
-
-  if (vermelhaAgora && !pecaVermelhaPresente) {
-    stateText = "PECA VERMELHA DETECTADA";
-    updateDisplay(stateText, tempRaw, pwm);
-  } else if (!vermelhaAgora && pecaVermelhaPresente) {
-    stateText = "PECA VERMELHA REMOVIDA";
-    updateDisplay(stateText, tempRaw, pwm);
-  }
-
   // 5) Transições: peça detectada e dropoff livre
   // prioridade pra branco se as duas derem true por ruído
   if (brancaAgora && !pecaBrancaPresente && !vermelhaAgora) {
-    executarCicloBraco(BASE_DROPOFF_ANGLE, "BRANCO");
+    executarCicloBraco(BASE_DROPOFF_ANGLE, "branco");
   } 
   else if (vermelhaAgora && !pecaVermelhaPresente && !brancaAgora) {
-    executarCicloBraco(BASE_DROPOFF_RED, "VERMELHO");
+    executarCicloBraco(BASE_DROPOFF_RED, "vermelho");
   }
 
   pecaBrancaPresente   = brancaAgora;
@@ -207,9 +222,7 @@ void loop() {
   delay(100);
 }
 
-// =======================
 // Funções utilitárias
-// =======================
 
 bool ehBranco(float r, float g, float b) {
   const float limiarBrilho = 115;
@@ -262,25 +275,26 @@ void updateDisplay(const String &state, int tempRaw, int pwm) {
   display.clearDisplay();
   display.setTextSize(1);
   display.setCursor(0,0);
-  display.println("BRAÇO ROBOTICO");
-  display.setCursor(0,12);
-  display.print("Estado: ");
+  display.print("Estado:");
   display.println(state);
   display.setCursor(0, 26);
-  display.print("Temperatura: ");
-  display.print(temperatura_graus,1);
-  display.setCursor(0, 36);
-  display.print("PWM: ");
+  display.print("Estado Drop : ");
+  display.print( pecaNoDropoff() ? "Ocupado" : "Livre" );
+  display.setCursor(0, 40);
+  display.print("PWM ventoinha: ");
   display.print(pwm);
   display.setCursor(0, 48);
-  display.print("IR Drop: ");
-  display.print( pecaNoDropoff() ? "PRES" : "LIVRE" );
+  display.print("Temp Atual:   ");
+  display.print(temperatura_graus,1);
+  display.setCursor(0,56);
+  display.print("Temp Inicial: ");
+  display.print(tempBaseC,1);
   display.display();
 }
 
 
 void executarCicloBraco(int baseDropoffAngle, const String &nomeCor) {
-  updateDisplay("CICLO " + nomeCor + ": GIRAR->PICKUP", readTempAvg(), 0);
+  updateDisplay("Ciclo " + nomeCor + "  Roda -> Pickup", readTempAvg(), pwmAtual);
   delay(200);
 
   // girar pra pickup
@@ -288,7 +302,7 @@ void executarCicloBraco(int baseDropoffAngle, const String &nomeCor) {
     base.write(pos);
     delay(10);
   }
-  updateDisplay("CICLO " + nomeCor + ": PICKUP", readTempAvg(), analogRead(PIN_TEMP_AIN));
+  updateDisplay("Ciclo " + nomeCor + "  Desce Braco ", readTempAvg(), pwmAtual);
   delay(500);
 
   // descer garra
@@ -296,7 +310,7 @@ void executarCicloBraco(int baseDropoffAngle, const String &nomeCor) {
     elbow.write(pos);
     delay(10);
   }
-  updateDisplay("CICLO " + nomeCor + ": DOWN", readTempAvg(), analogRead(PIN_TEMP_AIN));
+  updateDisplay("Ciclo " + nomeCor + "  A abrir Garra", readTempAvg(), pwmAtual);
   delay(500);
 
   // abrir garra
@@ -304,46 +318,42 @@ void executarCicloBraco(int baseDropoffAngle, const String &nomeCor) {
     wrist.write(pos);
     delay(10);
   }
-  updateDisplay("CICLO " + nomeCor + ": ABRIR GARRA", readTempAvg(), analogRead(PIN_TEMP_AIN));
   delay(2000);
-
+  updateDisplay("Ciclo " + nomeCor + "  A estender -> Pick", readTempAvg(), pwmAtual);
   // estende braço
   for (int pos = 0; pos <= 80; pos++) {
     shoulder.write(pos);
     delay(10);
   }
-  updateDisplay("CICLO " + nomeCor + ": ESTENDE", readTempAvg(), analogRead(PIN_TEMP_AIN));
   delay(500);
-
+  updateDisplay("Ciclo " + nomeCor + "  A agarrar peca", readTempAvg(), pwmAtual);
   // fechar garra (pega peça)
   for (int pos = 70; pos <= 150; pos++) {
     wrist.write(pos);
     delay(10);
   }
-  updateDisplay("CICLO " + nomeCor + ": FECHAR GARRA", readTempAvg(), analogRead(PIN_TEMP_AIN));
   delay(2000);
-
+  updateDisplay("Ciclo " + nomeCor + "  A recolher peca", readTempAvg(), pwmAtual);
   // volta braço (com peça)
   for (int pos = 80; pos >= 0; pos--) {
     shoulder.write(pos);
     delay(10);
   }
-  updateDisplay("CICLO " + nomeCor + ": RECOLHE", readTempAvg(), analogRead(PIN_TEMP_AIN));
+  updateDisplay("Ciclo " + nomeCor + "  Roda -> Drop", readTempAvg(), pwmAtual);
   delay(5);
 
-  // ============================
+  
   // GIRA BASE PARA DROPOFF
-  // (só o BRANCO respeita IR e pausa se tiver objeto)
-  // ============================
+  // (só o BRANCO respeita sensor Drop e pausa se tiver objeto)
   bool waitingDrop = false;
 
   for (int pos = BASE_PICKUP_ANGLE; pos >= baseDropoffAngle; pos--) {
     base.write(pos);
 
-    if (nomeCor == "BRANCO") {
+    if (nomeCor == "branco") {
       // se aparecer objeto no IR, mostrar e esperar liberar
       if (pecaNoDropoff() && !waitingDrop) {
-        updateDisplay("AGUARDAR DROP LIVRE", readTempAvg(), analogRead(PIN_TEMP_AIN));
+        updateDisplay("Ciclo " + nomeCor + "  Drop ocupado", readTempAvg(), pwmAtual);
         waitingDrop = true;
       }
 
@@ -353,7 +363,7 @@ void executarCicloBraco(int baseDropoffAngle, const String &nomeCor) {
       }
 
       if (waitingDrop && !pecaNoDropoff()) {
-        updateDisplay("DROP LIVRE", readTempAvg(), analogRead(PIN_TEMP_AIN));
+        updateDisplay("Ciclo " + nomeCor + "  Drop Livre", readTempAvg(), pwmAtual);
         waitingDrop = false;
       }
     }
@@ -361,30 +371,27 @@ void executarCicloBraco(int baseDropoffAngle, const String &nomeCor) {
     delay(10);
   }
 
-  updateDisplay("A largar " + nomeCor, readTempAvg(), analogRead(PIN_TEMP_AIN));
+  updateDisplay("Ciclo " + nomeCor + "  A estender -> Drop" , readTempAvg(), pwmAtual);
   delay(5);
 
-  // estende garra no dropoff (SEM IR aqui)
+  // estende garra no dropoff
   for (int pos = 0; pos <= 90; pos++) {
     shoulder.write(pos);
     delay(10);
   }
-  updateDisplay("A descer " + nomeCor, readTempAvg(), analogRead(PIN_TEMP_AIN));
   delay(500);
-
+  
+  updateDisplay("Ciclo " + nomeCor + "  A soltar peca", readTempAvg(), pwmAtual);
   // abre garra (largando peça)
   for (int pos = 150; pos >= 70; pos--) {
     wrist.write(pos);
     delay(10);
   }
-  updateDisplay("A soltar " + nomeCor, readTempAvg(), analogRead(PIN_TEMP_AIN));
   delay(2000);
 
-  // ============================
-  // CONFIRMAÇÃO IR: APENAS BRANCO
-  // ============================
-  if (nomeCor == "BRANCO") {
-    updateDisplay("CONFIRMA DROP " + nomeCor, readTempAvg(), analogRead(PIN_TEMP_AIN));
+  // CONFIRMAÇÃO 
+  if (nomeCor == "branco") {
+    updateDisplay("Ciclo " + nomeCor + "  A confirmar entrega", readTempAvg(), pwmAtual);
     unsigned long inicioEspera = millis();
     const unsigned long tempoMaximo = 3000;
     bool detectado = false;
@@ -397,42 +404,41 @@ void executarCicloBraco(int baseDropoffAngle, const String &nomeCor) {
     }
 
     if (detectado) {
-      updateDisplay("Entregue " + nomeCor + "!", readTempAvg(), analogRead(PIN_TEMP_AIN));
-      delay(600);
+      updateDisplay("Ciclo " + nomeCor + "  Peca entregue!", readTempAvg(), pwmAtual);
+      delay(1500);
     } else {
-      updateDisplay("Erro DROP " + nomeCor + "!", readTempAvg(), analogRead(PIN_TEMP_AIN));
-      delay(1000);
+      updateDisplay("Ciclo " + nomeCor + "  Erro na entrega!", readTempAvg(), pwmAtual);
+      delay(1500);
     }
   } else {
-    // VERMELHO: não usa IR, assume que entregou
-    updateDisplay("Entregue " + nomeCor + "!", readTempAvg(), analogRead(PIN_TEMP_AIN));
-    delay(600);
+    // VERMELHO: assume que entregou
+    updateDisplay("Ciclo " + nomeCor + "  Peca entregue", readTempAvg(), pwmAtual);
+    delay(1500);
   }
 
   // recolhe garra
+  updateDisplay("Ciclo " + nomeCor + "  A recolher braco", readTempAvg(), pwmAtual);
   for (int pos = 90; pos >= 0; pos--) {
     shoulder.write(pos);
     delay(10);
   }
-  updateDisplay("A Recolher", readTempAvg(), analogRead(PIN_TEMP_AIN));
+  updateDisplay("Ciclo " + nomeCor + "  A fechar garra", readTempAvg(), pwmAtual);
   delay(500);
-
   // fecha garra
   for (int pos = 70; pos <= 150; pos++) {
     wrist.write(pos);
     delay(10);
   }
-  updateDisplay("A Fechar", readTempAvg(), analogRead(PIN_TEMP_AIN));
   delay(2000);
 
+  updateDisplay("Ciclo " + nomeCor + "  A subir braco", readTempAvg(), pwmAtual);
   // sobe garra
   for (int pos = 110; pos <= 160; pos++) {
     elbow.write(pos);
     delay(10);
   }
-  updateDisplay("A SUBIR", readTempAvg(), analogRead(PIN_TEMP_AIN));
+  updateDisplay("Ciclo " + nomeCor + "  Roda -> Standby", readTempAvg(), pwmAtual);
   delay(500);
-
   // gira base de volta ao centro (funciona para branco e vermelho)
   if (baseDropoffAngle < BASE_CENTER_ANGLE) {
     for (int pos = baseDropoffAngle; pos <= BASE_CENTER_ANGLE; pos++) {
@@ -446,6 +452,6 @@ void executarCicloBraco(int baseDropoffAngle, const String &nomeCor) {
     }
   }
 
-  updateDisplay("STANDBY", readTempAvg(), analogRead(PIN_TEMP_AIN));
+  updateDisplay("Standby", readTempAvg(), pwmAtual);
   delay(500);
 }
